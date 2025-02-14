@@ -10,7 +10,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          ref: kamal  # Ensuring we work on the "kamal" branch
+          ref: kamal  # Working on "kamal" branch
 
       - name: Modify file22
         run: |
@@ -43,7 +43,19 @@ jobs:
       - name: Check PR Status
         run: |
           PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number')
-          gh pr view $PR_NUMBER --json state --jq '.state'
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "❌ No PR found, process failed."
+            exit 1
+          fi
+
+          PR_STATE=$(gh pr view $PR_NUMBER --json state --jq '.state')
+
+          if [[ "$PR_STATE" == "OPEN" ]]; then
+            echo "✅ PR Status: Succeeded"
+          else
+            echo "❌ PR Status: Failed"
+            exit 1
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
