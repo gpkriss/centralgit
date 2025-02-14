@@ -1,20 +1,49 @@
-name: Hello World Workflow
+name: Auto PR Creation and Status Check
 
 on:
-  push:
-    branches:
-      - feature1
+  workflow_dispatch:
 
 jobs:
-  hello-world-job:
+  modify-file:
     runs-on: ubuntu-latest
-
     steps:
-      # Check out the repository code
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: kamal  # Ensuring we work on the "kamal" branch
 
-      # Run Hello World script
-      - name: Print Hello World
-        run: echo "Hello, World!"
+      - name: Modify file22
+        run: |
+          echo "hello world" >> file22
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "github-actions"
+          git add file22
+          git commit -m "Added hello world to file22"
+          git push origin kamal
+
+  create-pr:
+    needs: modify-file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Pull Request
+        id: create_pr
+        run: |
+          PR_URL=$(gh pr create --base main --head kamal --title "Auto PR: Update file22" --body "This PR adds a 'hello world' line to file22.")
+          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check-pr-status:
+    needs: create-pr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Status
+        run: |
+          PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number')
+          gh pr view $PR_NUMBER --json state --jq '.state'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
