@@ -1,7 +1,7 @@
 name: List Repo Secrets
 
 on:
-  workflow_dispatch:
+  push:
 
 jobs:
   list-secrets:
