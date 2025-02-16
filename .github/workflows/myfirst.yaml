@@ -28,18 +28,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4  # ✅ Ensures Git repo is available
 
       - name: Check if PR already exists
         id: check_pr
         run: |
           PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number' || echo "")
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-          echo "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-          
+
       - name: Create PR if not exists
         if: env.PR_NUMBER == ''
         run: |
@@ -51,6 +49,9 @@ jobs:
     needs: create-pr
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4  # ✅ Ensures Git repo is available
+
       - name: Check PR Status
         run: |
           PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number')
