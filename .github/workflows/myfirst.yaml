@@ -35,9 +35,11 @@ jobs:
         run: |
           PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number' || echo "")
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
+          echo "$PR_NUMBER"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          
+          
       - name: Create PR if not exists
         if: env.PR_NUMBER == ''
         run: |
