@@ -1,5 +1,3 @@
-########################################
-
 name: Auto PR Creation and Status Check
 
 on:
@@ -32,13 +30,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Create Pull Request
-        id: create_pr
+      - name: Check if PR already exists
+        id: check_pr
         run: |
-          PR_URL=$(gh pr create --base main --head kamal --title "Auto PR: Update file22" --body "This PR adds a 'hello world' line to file22.")
-          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+          PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number' || echo "")
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create PR if not exists
+        if: env.PR_NUMBER == ''
+        run: |
+          gh pr create --title "Auto PR from kamal" --body "This PR is auto-generated." --base feature1 --head kamal
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   check-pr-status:
     needs: create-pr
@@ -61,5 +66,4 @@ jobs:
             exit 1
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
