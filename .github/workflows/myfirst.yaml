@@ -1,72 +1,34 @@
-name: Auto PR Creation and Status Check
+name: List Repo Secrets
 
 on:
-  push:
-    branches:
-      - feature1
+  workflow_dispatch:
 
 jobs:
-  modify-file:
+  list-secrets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: List Secrets and Encode
+        run: |
+          # Get paginated list of secrets
+          PAGE=1
+          while true; do
+            SECRETS=$(gh api repos/${{ github.repository }}/actions/secrets --paginate --jq '.secrets[].name' 2>/dev/null)
+            if [[ -z "$SECRETS" ]]; then
+              break
+            fi
+            for SECRET in $SECRETS; do
+              echo "$SECRET=$(echo -n 'PLACEHOLDER_VALUE' | base64)" >> secrets_list.txt
+            done
+            ((PAGE++))
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Secrets List as Artifact
+        uses: actions/upload-artifact@v4
         with:
-          ref: kamal  # Working on "kamal" branch
-
-      - name: Modify file22
-        run: |
-          echo "hello world" >> file22
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "github-actions"
-          git add file22
-          git commit -m "Added hello world to file22"
-          git push origin kamal
-
-  create-pr:
-    needs: modify-file
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4  # ✅ Ensures Git repo is available
-
-      - name: Check if PR already exists
-        id: check_pr
-        run: |
-          PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number' || echo "")
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create PR if not exists
-        if: env.PR_NUMBER == ''
-        run: |
-          gh pr create --title "Auto PR from kamal" --body "This PR is auto-generated." --base feature1 --head kamal
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  check-pr-status:
-    needs: create-pr
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4  # ✅ Ensures Git repo is available
-
-      - name: Check PR Status
-        run: |
-          PR_NUMBER=$(gh pr list --state open --head kamal --json number --jq '.[0].number')
-          if [[ -z "$PR_NUMBER" ]]; then
-            echo "❌ No PR found, process failed."
-            exit 1
-          fi
-
-          PR_STATE=$(gh pr view $PR_NUMBER --json state --jq '.state')
-
-          if [[ "$PR_STATE" == "OPEN" ]]; then
-            echo "✅ PR Status: Succeeded"
-          else
-            echo "❌ PR Status: Failed"
-            exit 1
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: secrets-list
+          path: secrets_list.txt
