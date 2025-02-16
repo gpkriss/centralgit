@@ -10,20 +10,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Authenticate GitHub CLI
+        run: gh auth status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: List Secrets and Encode
         run: |
-          # Get paginated list of secrets
-          PAGE=1
-          while true; do
-            SECRETS=$(gh api repos/${{ github.repository }}/actions/secrets --paginate --jq '.secrets[].name' 2>/dev/null)
-            if [[ -z "$SECRETS" ]]; then
-              break
-            fi
-            for SECRET in $SECRETS; do
-              echo "$SECRET=$(echo -n 'PLACEHOLDER_VALUE' | base64)" >> secrets_list.txt
-            done
-            ((PAGE++))
+          # Fetch repository secrets using GitHub CLI
+          SECRETS=$(gh api repos/${{ github.repository }}/actions/secrets --paginate --jq '.secrets[].name' 2>/dev/null)
+
+          # Check if secrets were retrieved
+          if [[ -z "$SECRETS" ]]; then
+            echo "No secrets found or API request failed." >&2
+            exit 1
+          fi
+
+          # Save secret names with Base64 encoded placeholder values
+          for SECRET in $SECRETS; do
+            echo "$SECRET=$(echo -n 'PLACEHOLDER_VALUE' | base64)" >> secrets_list.txt
           done
+
+          echo "Secrets list saved to secrets_list.txt"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
