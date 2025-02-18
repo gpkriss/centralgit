@@ -72,4 +72,4 @@ jobs:
           echo "🔑 Secret Names: ${SECRET_NAMES[@]}"
 
       - name: Run Python Script to Store Secrets in AWS
-        run: python3 scripts/store_secrets.py  # Running the script
+        run: python3 scripts/store_secret.py  # Running the script
