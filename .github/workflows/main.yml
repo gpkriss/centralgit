@@ -1,36 +1,29 @@
-name: List Repository Secrets
+name: List GitHub Secrets
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   list-secrets:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Get repository secrets with pagination
-        run: |
-          REPO=${{ github.repository }}  # Get the repo (owner/repo)
-          TOKEN=${{ secrets.GH_TOKEN2 }}    # GitHub PAT stored as a secret
-          PER_PAGE=30                    # Number of secrets per page
-          PAGE=1                          # Start with page 1
+    # - name: Checkout repository
+    #   uses: actions/checkout@v2
 
-          echo "Fetching repository secrets for $REPO"
+    - name: List Secrets
+      id: list-secrets
+      run: |
+        PAGE=1
+        while : ; do
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN2 }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/secrets?per_page=20&page=$PAGE")
+          SECRETS=$(echo $RESPONSE | jq '.secrets | length')
+          if [ "$SECRETS" -eq "0" ]; then
+            break
+          fi
+          echo $RESPONSE | jq '.secrets[] | .name'
+          PAGE=$((PAGE + 1))
+        done
 
-          while true; do
-            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-                           -H "Authorization: token $TOKEN" \
-                           "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-
-            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[]?.name')
-            NEXT_PAGE=$(echo "$RESPONSE" | jq -r 'if .secrets | length == 0 then "end" else "continue" end')
-
-            if [ "$NEXT_PAGE" == "end" ]; then
-              echo "No more secrets to fetch."
-              break
-            fi
-
-            echo "Page $PAGE:"
-            echo "$SECRETS"
-
-            PAGE=$((PAGE + 1))  # Increment page number
-          done
-
+    - name: Show secrets
+      run: echo "Secrets have been listed!"
