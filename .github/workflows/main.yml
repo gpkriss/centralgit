@@ -1,10 +1,10 @@
-name: Sync TEST_TOKEN to AWS Secrets Manager
+name: Sync All GitHub Secrets to AWS Secrets Manager
 
 on:
   push:
 
 jobs:
-  sync-test-secret:
+  sync-secrets:
     runs-on: ubuntu-latest
     steps:
       - name: Install dependencies
@@ -16,8 +16,8 @@ jobs:
       - name: Verify AWS CLI Installation
         run: aws --version
 
-      - name: Checkout Repository
-        uses: actions/checkout@v3  # Ensures the script is available
+      # - name: Checkout Repository
+      #   uses: actions/checkout@v3  # Ensures the script is available
 
       - name: Configure AWS CLI
         run: |
@@ -25,18 +25,51 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: Fetch repository secrets and check for TEST_TOKEN
+      - name: Fetch all repository secrets using GitHub API
         env:
-          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}  # Retrieve actual secret value
+          GH_TOKEN: ${{ secrets.GH_TOKEN3 }}  # GitHub Personal Access Token with 'repo' scope
         run: |
-          echo "Checking for TEST_TOKEN..."
-          if [[ -z "$TEST_TOKEN" ]]; then
-            echo "TEST_TOKEN not found or empty in GitHub secrets."
-            exit 1
-          else
-            echo "TEST_TOKEN found! Storing in AWS..."
-            echo "$TEST_TOKEN" > secret_value.txt
-          fi
+          REPO=${{ github.repository }}
+          PER_PAGE=30
+          PAGE=1
+          SECRETS_JSON="{"
+          SECRET_NAMES=()
+          FIRST=true
+          COUNT=0
 
-      - name: Run Python Script to Store Secret in AWS
-        run: python3 scripts/store_secret.py  # Running the script
+          echo "🔍 Fetching all repository secrets from GitHub API..."
+
+          while true; do
+            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+                              -H "Authorization: token $GH_TOKEN" \
+                              "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
+
+            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[]?.name')
+
+            if [ -z "$SECRETS" ]; then
+              echo "✅ No more secrets found."
+              break
+            fi
+
+            for SECRET in $SECRETS; do
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                SECRETS_JSON+=","
+              fi
+              SECRETS_JSON+="\"$SECRET\":\"DUMMY_VALUE\""  # GitHub API does NOT return values
+              SECRET_NAMES+=("$SECRET")
+              COUNT=$((COUNT + 1))
+            done
+
+            PAGE=$((PAGE + 1))
+          done
+
+          SECRETS_JSON+="}"
+          echo "$SECRETS_JSON" > secrets.json
+
+          echo "✅ Total Secrets Found: $COUNT"
+          echo "🔑 Secret Names: ${SECRET_NAMES[@]}"
+
+      - name: Run Python Script to Store Secrets in AWS
+        run: python3 scripts/store_secrets.py  # Running the script
