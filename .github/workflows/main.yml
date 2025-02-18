@@ -7,15 +7,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+    # - name: Checkout repository
+    #   uses: actions/checkout@v2
 
     - name: List Secrets
       id: list-secrets
       run: |
         PAGE=1
         while : ; do
-          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN2 }}" \
             "https://api.github.com/repos/${{ github.repository }}/actions/secrets?per_page=100&page=$PAGE")
           SECRETS=$(echo $RESPONSE | jq '.secrets | length')
           if [ "$SECRETS" -eq "0" ]; then
