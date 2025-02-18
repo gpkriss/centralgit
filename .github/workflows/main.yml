@@ -20,7 +20,7 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: Fetch repository secrets and check for TEST_SECRET
+      - name: Fetch repository secrets and check for TEST_TOKEN
         run: |
           REPO=${{ github.repository }}
           TOKEN=${{ secrets.GH_TOKEN3 }}
@@ -38,8 +38,8 @@ jobs:
             SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[]?.name')
 
             for SECRET in $SECRETS; do
-              if [ "$SECRET" == "TEST_SECRET" ]; then
-                echo "TEST_SECRET found!"
+              if [ "$SECRET" == "TEST_TOKEN" ]; then
+                echo "TEST_TOKEN found!"
                 FOUND_SECRET=true
                 break 2  # Exit both loops
               fi
@@ -54,7 +54,7 @@ jobs:
           done
 
           if [ "$FOUND_SECRET" == "true" ]; then
-            echo "Moving TEST_SECRET to AWS Secrets Manager..."
+            echo "Moving TEST_TOKEN to AWS Secrets Manager..."
             SECRET_VALUE="DUMMY_VALUE"  # GitHub API does not return secret values
             AWS_SECRET_NAME="github-test-secret-${REPO//\//-}"
 
