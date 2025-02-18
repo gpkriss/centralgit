@@ -10,7 +10,7 @@ jobs:
       - name: Get repository secrets with pagination
         run: |
           REPO=${{ github.repository }}  # Get the repo (owner/repo)
-          TOKEN=${{ secrets.GH_TOKEN }}    # GitHub PAT stored as a secret
+          TOKEN=${{ secrets.GH_TOKEN3 }}    # GitHub PAT stored as a secret
           PER_PAGE=30                    # Number of secrets per page
           PAGE=1                          # Start with page 1
 
