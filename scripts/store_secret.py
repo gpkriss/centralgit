@@ -1,24 +1,32 @@
 import boto3
+import json
 import os
 
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-SECRET_NAME = f"github-test-secret-{os.getenv('GITHUB_REPOSITORY', 'default-repo').replace('/', '-')}"
+SECRET_NAME = f"github-secrets-{os.getenv('GITHUB_REPOSITORY', 'default-repo').replace('/', '-')}"
 
-def store_secret(secret_name, secret_value, region):
+def store_secrets(secret_name, secret_data, region):
     client = boto3.client("secretsmanager", region_name=region)
 
     try:
+        # Convert dict to JSON string
+        secret_string = json.dumps(secret_data)
+        
         # Try creating the secret first
-        client.create_secret(Name=secret_name, SecretString=secret_value)
-        print(f"Secret {secret_name} created successfully!")
+        client.create_secret(Name=secret_name, SecretString=secret_string)
+        print(f" Secret {secret_name} created successfully!")
     except client.exceptions.ResourceExistsException:
         # If secret already exists, update it
-        client.update_secret(SecretId=secret_name, SecretString=secret_value)
-        print(f"Secret {secret_name} updated successfully!")
+        client.update_secret(SecretId=secret_name, SecretString=secret_string)
+        print(f" Secret {secret_name} updated successfully!")
 
-# Read the secret value from file (passed from GitHub Actions)
-with open("secret_value.txt", "r") as file:
-    secret_value = file.read().strip()
+# Read secrets from file (passed from GitHub Actions)
+with open("secrets.json", "r") as file:
+    secrets = json.load(file)
 
-# Store in AWS Secrets Manager
-store_secret(SECRET_NAME, secret_value, AWS_REGION)
+print(f" Total Secrets Found: {len(secrets)}")
+print(f" Secret Names: {', '.join(secrets.keys())}")
+
+# Store all secrets in AWS Secrets Manager
+store_secrets(SECRET_NAME, secrets, AWS_REGION)
+
