@@ -1,7 +1,6 @@
 name: List Repository Secrets
 
-on:
-  workflow_dispatch:  # Manually trigger this workflow
+on: [push]
 
 jobs:
   list-secrets:
