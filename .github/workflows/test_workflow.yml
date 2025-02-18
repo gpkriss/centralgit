@@ -1,6 +1,6 @@
 name: List GitHub Secrets
 
-on: [workflow_dispatch]
+on: [push]
 
 jobs:
   list-secrets:
