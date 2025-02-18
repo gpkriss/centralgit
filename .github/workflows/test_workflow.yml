@@ -1,0 +1,30 @@
+name: List Repository Secrets
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      # - name: Checkout repository
+      #   uses: actions/checkout@v4
+
+      - name: Fetch secrets with pagination using API
+        run: |
+          per_page=30
+          page=1
+          while true; do
+            response=$(curl -s -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/secrets?per_page=$per_page&page=$page")
+            
+            secrets=$(echo "$response" | jq -r '.secrets[]? | .name')
+            if [[ -z "$secrets" ]]; then
+              break
+            fi
+            echo "$secrets"
+            ((page++))
+          done
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
