@@ -1,36 +1,66 @@
-name: List Repository Secrets
+name: Sync TEST_SECRET to AWS Secrets Manager
 
 on:
-   push:  # Manually trigger this workflow
+  push:  # Runs on push to any branch
 
 jobs:
-  list-secrets:
+  sync-test-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Get repository secrets with pagination
+      - name: Install dependencies
         run: |
-          REPO=${{ github.repository }}  # Get the repo (owner/repo)
-          TOKEN=${{ secrets.GH_TOKEN3 }}    # GitHub PAT stored as a secret
-          PER_PAGE=30                    # Number of secrets per page
-          PAGE=1                          # Start with page 1
+          sudo apt-get update
+          sudo apt-get install -y jq awscli
+
+      - name: Configure AWS CLI
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region ${{ secrets.AWS_REGION }}
+
+      - name: Fetch repository secrets and check for TEST_SECRET
+        run: |
+          REPO=${{ github.repository }}
+          TOKEN=${{ secrets.GH_TOKEN3 }}
+          PER_PAGE=30
+          PAGE=1
+          FOUND_SECRET=false
 
           echo "Fetching repository secrets for $REPO"
 
           while true; do
             RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-                           -H "Authorization: token $TOKEN" \
-                           "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
+                              -H "Authorization: token $TOKEN" \
+                              "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
 
             SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[]?.name')
-            NEXT_PAGE=$(echo "$RESPONSE" | jq -r 'if .secrets | length == 0 then "end" else "continue" end')
 
-            if [ "$NEXT_PAGE" == "end" ]; then
+            for SECRET in $SECRETS; do
+              if [ "$SECRET" == "TEST_SECRET" ]; then
+                echo "TEST_SECRET found!"
+                FOUND_SECRET=true
+                break 2  # Exit both loops
+              fi
+            done
+
+            if [ "$(echo "$SECRETS" | wc -l)" -lt "$PER_PAGE" ]; then
               echo "No more secrets to fetch."
               break
             fi
 
-            echo "Page $PAGE:"
-            echo "$SECRETS"
-
-            PAGE=$((PAGE + 1))  # Increment page number
+            PAGE=$((PAGE + 1))
           done
+
+          if [ "$FOUND_SECRET" == "true" ]; then
+            echo "Moving TEST_SECRET to AWS Secrets Manager..."
+            SECRET_VALUE="DUMMY_VALUE"  # GitHub API does not return secret values
+            AWS_SECRET_NAME="github-test-secret-${REPO//\//-}"
+
+            aws secretsmanager create-secret --name "$AWS_SECRET_NAME" --secret-string "$SECRET_VALUE" || \
+            aws secretsmanager update-secret --secret-id "$AWS_SECRET_NAME" --secret-string "$SECRET_VALUE"
+
+            echo "TEST_SECRET successfully stored in AWS Secrets Manager as $AWS_SECRET_NAME."
+          else
+            echo "TEST_SECRET not found."
+          fi
+
