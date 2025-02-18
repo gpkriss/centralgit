@@ -1,7 +1,7 @@
-name: Sync TEST_SECRET to AWS Secrets Manager
+name: Sync TEST_TOKEN to AWS Secrets Manager
 
 on:
-  push:  # Runs on push to any branch
+  push:
 
 jobs:
   sync-test-secret:
@@ -10,9 +10,14 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
+          sudo apt-get install -y jq python3-pip
+          pip3 install boto3
+
       - name: Verify AWS CLI Installation
-        run: |
-           aws --version
+        run: aws --version
+
+      - name: Checkout Repository
+        uses: actions/checkout@v3  # Ensures the script is available
 
       - name: Configure AWS CLI
         run: |
@@ -21,48 +26,17 @@ jobs:
           aws configure set region ${{ secrets.AWS_REGION }}
 
       - name: Fetch repository secrets and check for TEST_TOKEN
+        env:
+          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}  # Retrieve actual secret value
         run: |
-          REPO=${{ github.repository }}
-          TOKEN=${{ secrets.GH_TOKEN3 }}
-          PER_PAGE=30
-          PAGE=1
-          FOUND_SECRET=false
-
-          echo "Fetching repository secrets for $REPO"
-
-          while true; do
-            RESPONSE=$(curl -s -H "Accept: application/vnd.github.v3+json" \
-                              -H "Authorization: token $TOKEN" \
-                              "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-
-            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[]?.name')
-
-            for SECRET in $SECRETS; do
-              if [ "$SECRET" == "TEST_TOKEN" ]; then
-                echo "TEST_TOKEN found!"
-                FOUND_SECRET=true
-                break 2  # Exit both loops
-              fi
-            done
-
-            if [ "$(echo "$SECRETS" | wc -l)" -lt "$PER_PAGE" ]; then
-              echo "No more secrets to fetch."
-              break
-            fi
-
-            PAGE=$((PAGE + 1))
-          done
-
-          if [ "$FOUND_SECRET" == "true" ]; then
-            echo "Moving TEST_TOKEN to AWS Secrets Manager..."
-            SECRET_VALUE="DUMMY_VALUE"  # GitHub API does not return secret values
-            AWS_SECRET_NAME="github-test-secret-${REPO//\//-}"
-
-            aws secretsmanager create-secret --name "$AWS_SECRET_NAME" --secret-string "$SECRET_VALUE" || \
-            aws secretsmanager update-secret --secret-id "$AWS_SECRET_NAME" --secret-string "$SECRET_VALUE"
-
-            echo "TEST_SECRET successfully stored in AWS Secrets Manager as $AWS_SECRET_NAME."
+          echo "Checking for TEST_TOKEN..."
+          if [[ -z "$TEST_TOKEN" ]]; then
+            echo "TEST_TOKEN not found or empty in GitHub secrets."
+            exit 1
           else
-            echo "TEST_SECRET not found."
+            echo "TEST_TOKEN found! Storing in AWS..."
+            echo "$TEST_TOKEN" > secret_value.txt
           fi
 
+      - name: Run Python Script to Store Secret in AWS
+        run: python3 scripts/store_secret.py  # Running the script
