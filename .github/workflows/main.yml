@@ -31,7 +31,7 @@ jobs:
 
       - name: List and Copy GitHub Secrets to AWS
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token with repo read access
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}  # GitHub token with repo read access
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: python3 scripts/store_secret.py  # Running the updated script
 
