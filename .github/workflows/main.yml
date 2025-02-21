@@ -2,7 +2,8 @@ name: Sync All Secrets to AWS Secrets Manager
 
 on:
   push:
-
+    branches:
+      - kamal 
 jobs:
   sync-secrets:
     runs-on: ubuntu-latest
