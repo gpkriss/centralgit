@@ -3,11 +3,17 @@ name: Sync All Secrets to AWS Secrets Manager
 on:
   push:
     branches:
-      - kamal 
+      - kamal  # Trigger only on the 'kamal' branch
+
 jobs:
   sync-secrets:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          ref: kamal  # Ensure the correct branch is checked out
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -16,9 +22,6 @@ jobs:
 
       - name: Verify AWS CLI Installation
         run: aws --version
-
-      - name: Checkout Repository
-        uses: actions/checkout@v3
 
       - name: Configure AWS CLI
         run: |
