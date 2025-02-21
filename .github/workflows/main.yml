@@ -33,5 +33,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # GitHub token with repo read access
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: python3 scripts/sync_secrets.py  # Running the updated script
+        run: python3 scripts/store_secret.py  # Running the updated script
 
