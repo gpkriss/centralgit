@@ -2,13 +2,18 @@ import os
 import requests
 import boto3
 
+# GitHub API credentials
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_OWNER = "gpkriss"  # Change this
-REPO_NAME = "centralgit"   # Change this
+REPO_OWNER = "gpkriss"  # Change this if needed
+REPO_NAME = "centralgit"  # Change this if needed
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
+# GitHub API URL for listing secrets
 GITHUB_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/actions/secrets"
-HEADERS = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+HEADERS = {
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "Accept": "application/vnd.github.v3+json"
+}
 
 def list_github_secrets():
     """Fetches all GitHub repository secrets with pagination."""
@@ -17,15 +22,15 @@ def list_github_secrets():
 
     while True:
         response = requests.get(f"{GITHUB_API_URL}?per_page=30&page={page}", headers=HEADERS)
-        
+
         if response.status_code != 200:
-            print(f"Error fetching secrets: {response.text}")
+            print(f"❌ Error fetching secrets: {response.text}")
             return None
 
         data = response.json().get("secrets", [])
         if not data:
             break
-        
+
         secrets.extend(data)
         page += 1
 
@@ -37,26 +42,27 @@ def store_secret_in_aws(secret_name, secret_value):
 
     try:
         client.create_secret(Name=secret_name, SecretString=secret_value)
-        print(f"Secret '{secret_name}' created in AWS Secrets Manager.")
+        print(f"✅ Secret '{secret_name}' created in AWS Secrets Manager.")
     except client.exceptions.ResourceExistsException:
         client.update_secret(SecretId=secret_name, SecretString=secret_value)
-        print(f"Secret '{secret_name}' updated in AWS Secrets Manager.")
+        print(f"🔄 Secret '{secret_name}' updated in AWS Secrets Manager.")
 
 def main():
     secrets = list_github_secrets()
     if secrets is None:
-        print("Failed to retrieve secrets.")
+        print("❌ Failed to retrieve secrets.")
         return
 
-    print(f"Total Secrets Found: {len(secrets)}")
+    print(f"🔍 Total Secrets Found: {len(secrets)}")
 
     for secret in secrets:
         secret_name = secret["name"]
-        secret_value = os.getenv(secret_name)  # Fetch value from environment variables
+        secret_value = os.getenv(secret_name)  # Fetch the actual secret value from the environment
+
         if secret_value:
             store_secret_in_aws(secret_name, secret_value)
         else:
-            print(f"Warning: No value found for secret '{secret_name}'. Skipping.")
+            print(f"⚠️ Warning: No value found for secret '{secret_name}'. Skipping.")
 
 if __name__ == "__main__":
     main()
