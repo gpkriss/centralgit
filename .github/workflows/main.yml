@@ -14,7 +14,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y jq python3-pip
-          pip3 install boto3 requests
+          pip3 install boto3 gh requests
 
       - name: Configure AWS CLI
         run: |
@@ -22,13 +22,12 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: Manually Export All Secrets
+      - name: Fetch and Export All Secrets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+          PAT_TOKEN: ${{ secrets.GH_TOKEN3 }}  # Use the PAT instead of GITHUB_TOKEN
         run: |
           echo "Fetching all secret names..."
-          SECRET_NAMES=$(gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')
+          SECRET_NAMES=$(GH_TOKEN=$PAT_TOKEN gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')
 
           echo "Setting environment variables..."
           for secret in $SECRET_NAMES; do
@@ -42,4 +41,5 @@ jobs:
 
       - name: Run Python Script to Sync Secrets
         run: python3 scripts/sync_secrets.py
+
 
