@@ -1,7 +1,8 @@
 name: List Repository Secrets
 
 on:
-  push
+  push:
+  workflow_dispatch:
 
 jobs:
   list-secrets:
@@ -38,8 +39,4 @@ jobs:
           done
           
           echo "Total Secrets: $total_count"
-
-      - name: Run Python Script to Sync Secrets
-        run: python3 scripts/sync_secrets.py
-
 
