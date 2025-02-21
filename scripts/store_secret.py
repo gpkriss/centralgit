@@ -3,8 +3,8 @@ import requests
 import boto3
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_OWNER = "your-github-username"  # Change this
-REPO_NAME = "your-repository-name"   # Change this
+REPO_OWNER = "gpkriss"  # Change this
+REPO_NAME = "centralgit"   # Change this
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 GITHUB_API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/actions/secrets"
