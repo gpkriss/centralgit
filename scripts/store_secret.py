@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 def list_github_secrets():
-    """Fetch all GitHub repository secrets with pagination."""
+    """Fetch all GitHub repository secret names dynamically."""
     secrets = []
     page = 1
 
@@ -31,7 +31,7 @@ def list_github_secrets():
         if not data:
             break
 
-        secrets.extend(data)
+        secrets.extend([secret["name"] for secret in data])  # Extract only secret names
         page += 1
 
     return secrets
@@ -48,21 +48,20 @@ def store_secret_in_aws(secret_name, secret_value):
         print(f"🔄 Secret '{secret_name}' updated in AWS Secrets Manager.")
 
 def main():
-    secrets = list_github_secrets()
-    if secrets is None:
+    secret_names = list_github_secrets()
+    if secret_names is None:
         print("❌ Failed to retrieve secrets.")
         return
 
-    print(f"🔍 Total Secrets Found: {len(secrets)}")
+    print(f"🔍 Total Secrets Found: {len(secret_names)}")
 
-    for secret in secrets:
-        secret_name = secret["name"]
-        secret_value = os.getenv(secret_name)  # Fetch the actual secret value from the environment
+    for secret_name in secret_names:
+        secret_value = os.getenv(secret_name)  # Fetch secret value dynamically from env
 
         if secret_value:
             store_secret_in_aws(secret_name, secret_value)
         else:
-            print(f"⚠️ Warning: No value found for secret '{secret_name}'. Skipping.")
+            print(f"⚠️ Warning: Secret '{secret_name}' is missing or not set in environment.")
 
 if __name__ == "__main__":
     main()
