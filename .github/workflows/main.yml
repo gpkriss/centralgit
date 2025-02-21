@@ -22,20 +22,23 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: Export All Secrets as Environment Variables
+      - name: Manually Export All Secrets
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          echo "Exporting secrets..."
-          echo "SECRETS=$(gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')" >> $GITHUB_ENV
-          for secret in $SECRETS; do
-            echo "$secret=${{ secrets[secret] }}" >> $GITHUB_ENV
+          echo "Fetching all secret names..."
+          SECRET_NAMES=$(gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')
+
+          echo "Setting environment variables..."
+          for secret in $SECRET_NAMES; do
+            SECRET_VALUE=$(printenv $secret)  # Fetch value from GitHub secrets
+            if [ -n "$SECRET_VALUE" ]; then
+              echo "$secret=$SECRET_VALUE" >> $GITHUB_ENV
+            else
+              echo "⚠️ Warning: No value found for secret '$secret'. Skipping."
+            fi
           done
-
-      - name: Run Python Script to Sync Secrets
-        run: python3 scripts/sync_secrets.py
-
 
       - name: Run Python Script to Sync Secrets
         run: python3 scripts/sync_secrets.py
