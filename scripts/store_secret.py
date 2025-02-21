@@ -4,8 +4,8 @@ import boto3
 
 # GitHub API credentials
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-REPO_OWNER = "gpkriss"  # Change this if needed
-REPO_NAME = "centralgit"  # Change this if needed
+REPO_OWNER = "gpkriss"  # Change if needed
+REPO_NAME = "centralgit"  # Change if needed
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
 
 # GitHub API URL for listing secrets
@@ -16,7 +16,7 @@ HEADERS = {
 }
 
 def list_github_secrets():
-    """Fetches all GitHub repository secrets with pagination."""
+    """Fetch all GitHub repository secrets with pagination."""
     secrets = []
     page = 1
 
@@ -37,12 +37,12 @@ def list_github_secrets():
     return secrets
 
 def store_secret_in_aws(secret_name, secret_value):
-    """Stores a secret in AWS Secrets Manager."""
+    """Store or update a secret in AWS Secrets Manager."""
     client = boto3.client("secretsmanager", region_name=AWS_REGION)
 
     try:
         client.create_secret(Name=secret_name, SecretString=secret_value)
-        print(f"✅ Secret '{secret_name}' created in AWS Secrets Manager.")
+        print(f"✅ Secret '{secret_name}' copied to AWS Secrets Manager.")
     except client.exceptions.ResourceExistsException:
         client.update_secret(SecretId=secret_name, SecretString=secret_value)
         print(f"🔄 Secret '{secret_name}' updated in AWS Secrets Manager.")
@@ -66,3 +66,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
