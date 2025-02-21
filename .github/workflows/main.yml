@@ -1,18 +1,14 @@
-name: Sync All Secrets to AWS Secrets Manager
+name: Sync Secrets to AWS Secrets Manager
 
 on:
   push:
-    branches:
-      - kamal  # Trigger only on the 'kamal' branch
 
 jobs:
   sync-secrets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
-        with:
-          ref: kamal  # Ensure the correct branch is checked out
+        uses: actions/checkout@v3  # Ensures script is available
 
       - name: Install dependencies
         run: |
@@ -20,18 +16,23 @@ jobs:
           sudo apt-get install -y jq python3-pip
           pip3 install boto3 requests
 
-      - name: Verify AWS CLI Installation
-        run: aws --version
-
       - name: Configure AWS CLI
         run: |
           aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: List and Copy GitHub Secrets to AWS
+      - name: Export All Secrets as Environment Variables
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}  # GitHub token with repo read access
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: python3 scripts/store_secret.py  # Running the updated script
+        run: |
+          echo "Exporting secrets..."
+          echo "SECRETS=$(gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')" >> $GITHUB_ENV
+          for secret in $SECRETS; do
+            echo "$secret=${{ secrets[secret] }}" >> $GITHUB_ENV
+          done
+
+      - name: Run Python Script to Sync Secrets
+        run: python3 scripts/sync_secrets.py
 
