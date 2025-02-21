@@ -1,43 +1,43 @@
-name: Sync Secrets to AWS Secrets Manager
+name: List Repository Secrets
 
 on:
-  push:
+  workflow_dispatch:
 
 jobs:
-  sync-secrets:
+  list-secrets:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3  # Ensures script is available
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: kamal
 
-      - name: Install dependencies
+      - name: Get all secrets with GitHub API and pagination
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq python3-pip
-          pip3 install boto3 gh requests
-
-      - name: Configure AWS CLI
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ${{ secrets.AWS_REGION }}
-
-      - name: Fetch and Export All Secrets
-        env:
-          PAT_TOKEN: ${{ secrets.GH_TOKEN3 }}  # Use the PAT instead of GITHUB_TOKEN
-        run: |
-          echo "Fetching all secret names..."
-          SECRET_NAMES=$(GH_TOKEN=$PAT_TOKEN gh api repos/${{ github.repository }}/actions/secrets --jq '.secrets[].name')
-
-          echo "Setting environment variables..."
-          for secret in $SECRET_NAMES; do
-            SECRET_VALUE=$(printenv $secret)  # Fetch value from GitHub secrets
-            if [ -n "$SECRET_VALUE" ]; then
-              echo "$secret=$SECRET_VALUE" >> $GITHUB_ENV
-            else
-              echo "⚠️ Warning: No value found for secret '$secret'. Skipping."
+          page=1
+          per_page=30  # GitHub API default page size
+          total_count=0
+          
+          while : ; do
+            response=$(curl -s -H "Authorization: token ${{ secrets.GH_TOKEN3 }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/secrets?per_page=$per_page&page=$page")
+            
+            secrets=$(echo "$response" | jq -r '.secrets[]?.name')
+            count=$(echo "$secrets" | wc -l)
+            
+            if [ "$count" -eq 0 ]; then
+              break
             fi
+            
+            echo "Secrets on page $page:"  
+            echo "$secrets"
+            
+            total_count=$((total_count + count))
+            page=$((page + 1))
           done
+          
+          echo "Total Secrets: $total_count"
 
       - name: Run Python Script to Sync Secrets
         run: python3 scripts/sync_secrets.py
