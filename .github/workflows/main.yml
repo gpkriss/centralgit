@@ -1,3 +1,6 @@
+
+
+
 name: "Fetch Repository Secrets"
 
 on:
@@ -13,18 +16,41 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Store Secrets in JSON File
+      - name: Fetch repository secret names via GitHub API
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          GH_TOKEN3: ${{ secrets.GH_TOKEN3 }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Fetching repository secret names from GitHub API..."
+          PAGE=1
+          PER_PAGE=100
+          SECRET_NAMES=()
+          
+          while true; do
+            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                            -H "Accept: application/vnd.github+json" \
+                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
+            
+            NAMES=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
+            [[ -z "$NAMES" ]] && break  # Stop if no secrets found
+            
+            SECRET_NAMES+=($NAMES)
+            PAGE=$((PAGE + 1))
+          done
+          
+          # Store secret names in a temporary file for later use
+          echo "${SECRET_NAMES[@]}" > secret_names.txt
+          echo "Total Secrets Found: ${#SECRET_NAMES[@]}"
+
+      - name: Store Secrets in JSON File
         run: |
           echo "Storing secrets in secrets.json..."
           echo '{' > secrets.json
           
-          [[ -n "$AWS_ACCESS_KEY_ID" ]] && echo '"AWS_ACCESS_KEY_ID": "'"$AWS_ACCESS_KEY_ID"'",' >> secrets.json
-          [[ -n "$AWS_SECRET_ACCESS_KEY" ]] && echo '"AWS_SECRET_ACCESS_KEY": "'"$AWS_SECRET_ACCESS_KEY"'",' >> secrets.json
-          [[ -n "$GH_TOKEN3" ]] && echo '"GH_TOKEN3": "'"$GH_TOKEN3"'"' >> secrets.json
+          while read -r SECRET; do
+            VALUE="${{ secrets[SECRET] }}"
+            [[ -n "$VALUE" ]] && echo "\"$SECRET\": \"$VALUE\"," >> secrets.json
+          done < secret_names.txt
 
           sed -i '$ s/,$//' secrets.json  # Remove trailing comma
           echo '}' >> secrets.json
@@ -36,9 +62,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change as needed
+          aws-region: us-east-1
 
       - name: Upload Secrets to AWS Secrets Manager
-        run: python3 scripts/store_secret.py
-
-
+        run: python3 scripts/store_secrets_individually.py
