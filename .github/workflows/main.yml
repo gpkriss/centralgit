@@ -1,4 +1,4 @@
-name: "Fetch and Copy Repository Secrets"
+name: "Fetch Repository Secrets"
 
 on:
   push:
@@ -6,32 +6,62 @@ on:
       - kamal
   workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
-  copy-secrets:
+  fetch-secrets:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
-        run: pip install requests cryptography
-
-      - name: Run Python script to copy secrets
+      - name: Fetch repository secrets via GitHub API
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO_OWNER: "your_target_repo_owner"
-          REPO_NAME: "your_target_repo_name"
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: python scripts/store_secret.py
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Fetching repository secrets from GitHub API..."
+          PAGE=1
+          PER_PAGE=100
+          TOTAL_SECRETS=0
+          SECRET_LIST_JSON="{}"
+
+          while true; do
+            # Fetch secrets using GitHub API with pagination
+            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                            -H "Accept: application/vnd.github+json" \
+                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
+
+            # Extract secret names
+            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
+            COUNT=$(echo "$SECRETS" | wc -l)
+
+            # Break loop if no more secrets
+            if [[ -z "$SECRETS" || "$COUNT" -eq 0 ]]; then
+              break
+            fi
+
+            # Construct JSON object for secrets
+            for SECRET in $SECRETS; do
+              SECRET_VALUE="REDACTED"  # GitHub API does not return secret values
+              SECRET_LIST_JSON=$(echo "$SECRET_LIST_JSON" | jq --arg key "$SECRET" --arg value "$SECRET_VALUE" '. + {($key): $value}')
+            done
+
+            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
+            PAGE=$((PAGE + 1))
+          done
+
+          echo "--------------------------------"
+          echo "Total Secrets Found: $TOTAL_SECRETS"
+          echo "--------------------------------"
+          echo "$SECRET_LIST_JSON" > secrets.json
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Change this if needed
+
+      - name: Upload secrets to AWS Secrets Manager
+        run: python3 scripts/store_secret.py
 
 
