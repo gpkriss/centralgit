@@ -18,4 +18,3 @@ for secret_name, secret_value in secrets.items():
     except client.exceptions.ResourceNotFoundException:
         client.create_secret(Name=secret_name, SecretString=secret_value)
         print(f"Created new secret: {secret_name}")
-
