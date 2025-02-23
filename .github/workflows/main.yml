@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Fetch repository secrets via GitHub API
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
           REPO: ${{ github.repository }}
         run: |
           echo "Fetching repository secrets from GitHub API..."
