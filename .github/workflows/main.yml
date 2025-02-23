@@ -13,37 +13,32 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Fetch repository secrets and store in JSON
+      - name: Store Secrets in JSON File
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO: ${{ github.repository }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GH_TOKEN3: ${{ secrets.GH_TOKEN3 }}
         run: |
-          echo "Fetching repository secrets from GitHub Actions..."
-          SECRET_JSON="{"
+          echo "Storing secrets in secrets.json..."
+          echo '{' > secrets.json
+          
+          [[ -n "$AWS_ACCESS_KEY_ID" ]] && echo '"AWS_ACCESS_KEY_ID": "'"$AWS_ACCESS_KEY_ID"'",' >> secrets.json
+          [[ -n "$AWS_SECRET_ACCESS_KEY" ]] && echo '"AWS_SECRET_ACCESS_KEY": "'"$AWS_SECRET_ACCESS_KEY"'",' >> secrets.json
+          [[ -n "$GH_TOKEN3" ]] && echo '"GH_TOKEN3": "'"$GH_TOKEN3"'"' >> secrets.json
 
-          # List all available secrets dynamically
-          SECRET_NAMES=("AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "GH_TOKEN3")  # Add more as needed
+          sed -i '$ s/,$//' secrets.json  # Remove trailing comma
+          echo '}' >> secrets.json
 
-          for SECRET in "${SECRET_NAMES[@]}"; do
-            VALUE="${{ secrets[SECRET] }}"
-            if [[ -n "$VALUE" ]]; then
-              SECRET_JSON+="\"$SECRET\": \"$VALUE\","
-            fi
-          done
-
-          # Remove last comma and close JSON
-          SECRET_JSON="${SECRET_JSON%,}}"
-          echo "$SECRET_JSON" > secrets.json
-
-          echo "Stored secrets in secrets.json"
+          echo "Secrets stored successfully in secrets.json!"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change if needed
+          aws-region: us-east-1  # Change as needed
 
-      - name: Upload secrets to AWS Secrets Manager
-        run: python3 scripts/store_secret.py
+      - name: Upload Secrets to AWS Secrets Manager
+        run: python3 scripts/store_secrets_individually.py
+
 
