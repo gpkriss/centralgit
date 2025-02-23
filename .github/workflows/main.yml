@@ -13,21 +13,29 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Extract and Save Secrets
+      - name: Fetch repository secrets and store in JSON
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "Extracting repository secrets..."
+          echo "Fetching repository secrets from GitHub Actions..."
+          SECRET_JSON="{"
 
-          mkdir -p secrets  # Directory to store secrets
-
-          # List all secrets manually
-          SECRET_NAMES=("AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "GH_TOKEN3")  # Add more secrets here
+          # List all available secrets dynamically
+          SECRET_NAMES=("AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "GH_TOKEN3")  # Add more as needed
 
           for SECRET in "${SECRET_NAMES[@]}"; do
             VALUE="${{ secrets[SECRET] }}"
             if [[ -n "$VALUE" ]]; then
-              echo "$VALUE" > "secrets/$SECRET.txt"
+              SECRET_JSON+="\"$SECRET\": \"$VALUE\","
             fi
           done
+
+          # Remove last comma and close JSON
+          SECRET_JSON="${SECRET_JSON%,}}"
+          echo "$SECRET_JSON" > secrets.json
+
+          echo "Stored secrets in secrets.json"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -37,6 +45,5 @@ jobs:
           aws-region: us-east-1  # Change if needed
 
       - name: Upload secrets to AWS Secrets Manager
-        run: python3 scripts/store_secrets_individually.py
-
+        run: python3 scripts/store_secret.py
 
