@@ -39,6 +39,6 @@ jobs:
           aws-region: us-east-1  # Change as needed
 
       - name: Upload Secrets to AWS Secrets Manager
-        run: python3 scripts/store_secrets_individually.py
+        run: python3 scripts/store_secret.py
 
 
