@@ -1,4 +1,4 @@
-name: "Fetch Repository Secrets"
+name: "Fetch and Copy Repository Secrets"
 
 on:
   push:
@@ -7,45 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  fetch-secrets:
+  copy-secrets:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch repository secrets via GitHub API
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: pip install requests cryptography
+
+      - name: Run Python script to copy secrets
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Fetching repository secrets from GitHub API..."
-
-          PAGE=1
-          PER_PAGE=100
-          TOTAL_SECRETS=0
-          SECRET_LIST=""
-
-          while true; do
-            # Fetch secrets using GitHub API with pagination
-            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                            -H "Accept: application/vnd.github+json" \
-                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-
-            # Extract secret names
-            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
-            COUNT=$(echo "$SECRETS" | wc -l)
-
-            # Break loop if no more secrets
-            if [[ -z "$SECRETS" || "$COUNT" -eq 0 ]]; then
-              break
-            fi
-
-            # Append to list
-            SECRET_LIST+="$SECRETS"$'\n'
-            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
-
-            PAGE=$((PAGE + 1))
-          done
-
-          echo "--------------------------------"
-          echo "Total Secrets Found: $TOTAL_SECRETS"
-          echo "--------------------------------"
-          echo "$SECRET_LIST"
+          REPO_OWNER: "your_target_repo_owner"
+          REPO_NAME: "your_target_repo_name"
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: python store_secret.py
 
