@@ -31,7 +31,7 @@ jobs:
           REPO_NAME: "centralgit"
         run: |
           PAGE=1
-          SECRETS_FILE=scripts/secrets.txt  # Store in scripts folder
+          SECRETS_FILE=scripts/secrets.txt
           mkdir -p scripts
           echo "" > $SECRETS_FILE
           
@@ -39,21 +39,21 @@ jobs:
             RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                               -H "Accept: application/vnd.github.v3+json" \
                               "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/secrets?per_page=100&page=$PAGE")
-            
-            SECRET_NAMES=$(echo "$RESPONSE" | jq -r '.secrets[].name')
-            
+
+            # Check if API returned a valid response
+            if echo "$RESPONSE" | jq -e '.secrets' > /dev/null; then
+              SECRET_NAMES=$(echo "$RESPONSE" | jq -r '.secrets[].name')
+            else
+              echo "Error: Failed to fetch secrets or no secrets found."
+              exit 1
+            fi
+
             if [ -z "$SECRET_NAMES" ]; then
               break
             fi
+
             echo "$SECRET_NAMES" >> $SECRETS_FILE
             ((PAGE++))
           done
-          echo "Total secrets fetched: $(wc -l < $SECRETS_FILE)"
-
-      - name: Call Python script to move secrets to AWS
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "us-east-1"
-        run: |
-          python3 scripts/store_secret.py
+          
+          echo "
