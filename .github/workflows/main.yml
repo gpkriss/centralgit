@@ -13,38 +13,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Fetch repository secrets via GitHub API
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO: ${{ github.repository }}
+      - name: Extract and Save Secrets
         run: |
-          echo "Fetching repository secrets from GitHub API..."
-          PAGE=1
-          PER_PAGE=100
-          mkdir -p secrets  # Create directory to store secrets
+          echo "Extracting repository secrets..."
 
-          while true; do
-            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                            -H "Accept: application/vnd.github+json" \
-                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-            
-            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
-            
-            if [[ -z "$SECRETS" ]]; then
-              break
+          mkdir -p secrets  # Directory to store secrets
+
+          # List all secrets manually
+          SECRET_NAMES=("AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "GH_TOKEN3")  # Add more secrets here
+
+          for SECRET in "${SECRET_NAMES[@]}"; do
+            VALUE="${{ secrets[SECRET] }}"
+            if [[ -n "$VALUE" ]]; then
+              echo "$VALUE" > "secrets/$SECRET.txt"
             fi
-
-            for SECRET in $SECRETS; do
-              VALUE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                           -H "Accept: application/vnd.github+json" \
-                           "https://api.github.com/repos/$REPO/actions/secrets/$SECRET" | jq -r '.encrypted_value')
-              
-              if [[ -n "$VALUE" && "$VALUE" != "null" ]]; then
-                echo "$VALUE" > "secrets/$SECRET.txt"
-              fi
-            done
-
-            PAGE=$((PAGE + 1))
           done
 
       - name: Configure AWS Credentials
@@ -52,9 +34,9 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change as needed
+          aws-region: us-east-1  # Change if needed
 
       - name: Upload secrets to AWS Secrets Manager
-        run: python3 scripts/store_secret.py
+        run: python3 scripts/store_secrets_individually.py
 
 
