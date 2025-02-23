@@ -1,6 +1,3 @@
-
-
-
 name: "Fetch Repository Secrets"
 
 on:
@@ -21,41 +18,38 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
           REPO: ${{ github.repository }}
         run: |
-          echo "Fetching repository secret names from GitHub API..."
+          echo "Fetching repository secrets from GitHub API..."
           PAGE=1
           PER_PAGE=100
+          TOTAL_SECRETS=0
+          SECRET_LIST_JSON="{}"
           SECRET_NAMES=()
-          
+
           while true; do
             RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                             -H "Accept: application/vnd.github+json" \
                             "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
+
+            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
+            COUNT=$(echo "$SECRETS" | wc -l)
+            [[ -z "$SECRETS" || "$COUNT" -eq 0 ]] && break
+
+            for SECRET in $SECRETS; do
+              SECRET_NAMES+=("$SECRET")
+              SECRET_LIST_JSON=$(echo "$SECRET_LIST_JSON" | jq --arg key "$SECRET" --arg value "REDACTED" '. + {($key): $value}')
+            done
             
-            NAMES=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
-            [[ -z "$NAMES" ]] && break  # Stop if no secrets found
-            
-            SECRET_NAMES+=($NAMES)
+            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
             PAGE=$((PAGE + 1))
           done
+
+          echo "--------------------------------"
+          echo "Total Secrets Found: $TOTAL_SECRETS"
+          echo "--------------------------------"
+          echo "$SECRET_LIST_JSON" > secrets.json
           
-          # Store secret names in a temporary file for later use
-          echo "${SECRET_NAMES[@]}" > secret_names.txt
-          echo "Total Secrets Found: ${#SECRET_NAMES[@]}"
-
-      - name: Store Secrets in JSON File
-        run: |
-          echo "Storing secrets in secrets.json..."
-          echo '{' > secrets.json
-          
-          while read -r SECRET; do
-            VALUE="${{ secrets[SECRET] }}"
-            [[ -n "$VALUE" ]] && echo "\"$SECRET\": \"$VALUE\"," >> secrets.json
-          done < secret_names.txt
-
-          sed -i '$ s/,$//' secrets.json  # Remove trailing comma
-          echo '}' >> secrets.json
-
-          echo "Secrets stored successfully in secrets.json!"
+          # Save secret names to a file for later use
+          printf "%s\n" "${SECRET_NAMES[@]}" > secret_names.txt
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -64,5 +58,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Upload Secrets to AWS Secrets Manager
-        run: python3 scripts/store_secrets_individually.py
+      - name: Upload secrets to AWS Secrets Manager
+        run: python3 scripts/store_secret.py
+
