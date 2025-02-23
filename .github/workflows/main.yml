@@ -1,59 +1,50 @@
-name: Fetch and Move Repository Secrets
+name: "Fetch Repository Secrets"
 
 on:
   push:
     branches:
-      - kamal  # Runs only when code is pushed to the 'kamal' branch
-  workflow_dispatch:  # Allows manual trigger
-
-permissions:
-  contents: read
-  id-token: write
+      - kamal
+  workflow_dispatch:
 
 jobs:
-  fetch-and-move-secrets:
+  fetch-secrets:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq python3-pip
-          pip install boto3
-
-      - name: Fetch all secrets with pagination
+      - name: Fetch repository secrets via GitHub API
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO_OWNER: "gpkriss"
-          REPO_NAME: "centralgit"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
+          echo "Fetching repository secrets from GitHub API..."
+
           PAGE=1
-          SECRETS_FILE=scripts/secrets.txt
-          mkdir -p scripts
-          echo "" > $SECRETS_FILE
-          
+          PER_PAGE=100
+          TOTAL_SECRETS=0
+          SECRET_LIST=""
+
           while true; do
+            # Fetch secrets using GitHub API with pagination
             RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                              -H "Accept: application/vnd.github.v3+json" \
-                              "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/secrets?per_page=100&page=$PAGE")
+                            -H "Accept: application/vnd.github+json" \
+                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
 
-            # Check if API returned a valid response
-            if echo "$RESPONSE" | jq -e '.secrets' > /dev/null; then
-              SECRET_NAMES=$(echo "$RESPONSE" | jq -r '.secrets[].name')
-            else
-              echo "Error: Failed to fetch secrets or no secrets found."
-              exit 1
-            fi
+            # Extract secret names
+            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
+            COUNT=$(echo "$SECRETS" | wc -l)
 
-            if [ -z "$SECRET_NAMES" ]; then
+            # Break loop if no more secrets
+            if [[ -z "$SECRETS" || "$COUNT" -eq 0 ]]; then
               break
             fi
 
-            echo "$SECRET_NAMES" >> $SECRETS_FILE
-            ((PAGE++))
+            # Append to list
+            SECRET_LIST+="$SECRETS"$'\n'
+            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
+
+            PAGE=$((PAGE + 1))
           done
-          
-          echo "
+
+          echo "--------------------------------"
+          echo "Total Secrets Found: $TOTAL_SECRETS"
+          echo "--------------------------------"
+          echo "$SECRET_LIST"
