@@ -31,7 +31,8 @@ jobs:
           REPO_NAME: "centralgit"
         run: |
           PAGE=1
-          SECRETS_FILE=secrets.txt
+          SECRETS_FILE=scripts/secrets.txt  # Store in scripts folder
+          mkdir -p scripts
           echo "" > $SECRETS_FILE
           
           while true; do
@@ -44,11 +45,9 @@ jobs:
             if [ -z "$SECRET_NAMES" ]; then
               break
             fi
-
             echo "$SECRET_NAMES" >> $SECRETS_FILE
             ((PAGE++))
           done
-
           echo "Total secrets fetched: $(wc -l < $SECRETS_FILE)"
 
       - name: Call Python script to move secrets to AWS
@@ -57,4 +56,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: "us-east-1"
         run: |
-          python3 store_secret.py
+          python3 scripts/store_secret.py
