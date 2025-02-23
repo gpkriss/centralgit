@@ -21,45 +21,38 @@ jobs:
           echo "Fetching repository secrets from GitHub API..."
           PAGE=1
           PER_PAGE=100
-          TOTAL_SECRETS=0
-          SECRET_LIST_JSON="{}"
+          mkdir -p secrets  # Create directory to store secrets
 
           while true; do
-            # Fetch secrets using GitHub API with pagination
             RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                             -H "Accept: application/vnd.github+json" \
                             "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-
-            # Extract secret names
+            
             SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
-            COUNT=$(echo "$SECRETS" | wc -l)
-
-            # Break loop if no more secrets
-            if [[ -z "$SECRETS" || "$COUNT" -eq 0 ]]; then
+            
+            if [[ -z "$SECRETS" ]]; then
               break
             fi
 
-            # Construct JSON object for secrets
             for SECRET in $SECRETS; do
-              SECRET_VALUE="REDACTED"  # GitHub API does not return secret values
-              SECRET_LIST_JSON=$(echo "$SECRET_LIST_JSON" | jq --arg key "$SECRET" --arg value "$SECRET_VALUE" '. + {($key): $value}')
+              VALUE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                           -H "Accept: application/vnd.github+json" \
+                           "https://api.github.com/repos/$REPO/actions/secrets/$SECRET" | jq -r '.encrypted_value')
+              
+              if [[ -n "$VALUE" && "$VALUE" != "null" ]]; then
+                echo "$VALUE" > "secrets/$SECRET.txt"
+              fi
             done
 
-            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
             PAGE=$((PAGE + 1))
           done
-
-          echo "--------------------------------"
-          echo "Total Secrets Found: $TOTAL_SECRETS"
-          echo "--------------------------------"
-          echo "$SECRET_LIST_JSON" > secrets.json
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # Change this if needed
+          aws-region: us-east-1  # Change as needed
 
       - name: Upload secrets to AWS Secrets Manager
         run: python3 scripts/store_secret.py
