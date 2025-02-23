@@ -48,3 +48,4 @@ jobs:
           echo "Total Secrets Found: $TOTAL_SECRETS"
           echo "--------------------------------"
           echo "$SECRET_LIST"
+
