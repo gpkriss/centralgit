@@ -12,4 +12,6 @@ jobs:
           echo "ENCODED_SECRET=$(echo -n '${{ secrets.MY_SECRET }}' | base64)" >> $GITHUB_ENV
 
       - name: Print Encoded Secret (Masked by GitHub)
-        run: echo "Base64 Encoded Secret: $ENCODED_SECRET"
+        run: echo display secret ${ENCODED_SECRET}"
+
+
