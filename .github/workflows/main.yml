@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Retrieve and Encode Secret in Base64
         run: |
-          echo "ENCODED_SECRET=$(echo -n '${{ secrets.MY_SECRET }}' | base64)" >> $GITHUB_ENV
+          echo "ENCODED_SECRET=$(echo -n '${{ secrets.GH_TOEKN2 }}' | base64)" >> $GITHUB_ENV
 
       - name: Print Encoded Secret (Masked by GitHub)
         run: echo display secret ${ENCODED_SECRET}"
