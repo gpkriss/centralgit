@@ -1,19 +1,22 @@
-name: Retrieve Secret in Base64
 
-on:
-  push:
+name: Manual Secret Encoding
+
+on: [push]
 
 jobs:
   encode-secret:
     runs-on: ubuntu-latest
     steps:
-      # - name: Retrieve and Encode Secret in Base64
-      - name: Print Encoded Secret (Unsafe)
+      # - name: Retrieve and Encode Secret
+      #   run: |
+      #     echo -n "${{ secrets.SECRE1_1 }}" | base64
+          
+      - name: Store Encoded Secret in ENV
         run: |
-          echo "ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1 }}' | base64)" | tee secret_output.txt
+          echo "ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1  }}' | base64)" >> $GITHUB_ENV
+          
+      - name: Print Encoded Secret
+        run: echo "$ENCODED_SECRET"
 
-
-      - name: Print Encoded Secret (Masked by GitHub)
-        run: echo display secret ${ENCODED_SECRET}"
 
 
