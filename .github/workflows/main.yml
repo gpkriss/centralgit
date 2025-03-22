@@ -1,4 +1,3 @@
-
 name: Manual Secret Encoding
 
 on: [push]
@@ -10,8 +9,10 @@ jobs:
           
       - name: Store Encoded Secret in ENV
         run: |
-          echo "ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1  }}' | base64)" >> GITHUB_ENV
+          echo "ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1  }}' | base64)" >> $GITHUB_ENV
           echo "$ENCODED_SECRET"
+
+       
 
           
 
