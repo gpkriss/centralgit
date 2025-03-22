@@ -1,63 +1,20 @@
-name: "Fetch Repository Secrets"
+name: Manual Secret Encoding
 
 on:
-  push:
-    branches:
-      - kamal
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  fetch-secrets:
+  encode-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Fetch repository secret names via GitHub API
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN3 }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo "Fetching repository secrets from GitHub API..."
-          PAGE=1
-          PER_PAGE=100
-          TOTAL_SECRETS=0
-          SECRET_LIST_JSON="{}"
-          SECRET_NAMES=()
-
-          while true; do
-            RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                            -H "Accept: application/vnd.github+json" \
-                            "https://api.github.com/repos/$REPO/actions/secrets?per_page=$PER_PAGE&page=$PAGE")
-
-            SECRETS=$(echo "$RESPONSE" | jq -r '.secrets[].name' 2>/dev/null)
-            COUNT=$(echo "$SECRETS" | wc -l)
-            [[ -z "$SECRETS" || "$COUNT" -eq 0 ]] && break
-
-            for SECRET in $SECRETS; do
-              SECRET_NAMES+=("$SECRET")
-              SECRET_LIST_JSON=$(echo "$SECRET_LIST_JSON" | jq --arg key "$SECRET" --arg value "REDACTED" '. + {($key): $value}')
-            done
-            
-            TOTAL_SECRETS=$((TOTAL_SECRETS + COUNT))
-            PAGE=$((PAGE + 1))
-          done
-
-          echo "--------------------------------"
-          echo "Total Secrets Found: $TOTAL_SECRETS"
-          echo "--------------------------------"
-          echo "$SECRET_LIST_JSON" > secrets.json
+      # - name: Retrieve and Encode Secret
+      #   run: |
+      #     echo -n "${{ secrets.SECRE1_1 }}" | base64
           
-          # Save secret names to a file for later use
-          printf "%s\n" "${SECRET_NAMES[@]}" > secret_names.txt
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Upload secrets to AWS Secrets Manager
-        run: python3 scripts/store_secret.py
+      - name: Store Encoded Secret in ENV
+        run: |
+          echo "ENCODED_SECRET=$(echo -n '${{ secrets.MY_SECRET }}' | base64)" >> $GITHUB_ENV
+          
+      - name: Print Encoded Secret
+        run: echo "$ENCODED_SECRET"
 
