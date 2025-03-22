@@ -7,7 +7,7 @@ jobs:
   encode-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Retrieve and Encode Secret in Base64
+      # - name: Retrieve and Encode Secret in Base64
       - name: Print Encoded Secret (Unsafe)
         run: |
           echo "ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1 }}' | base64)" | tee secret_output.txt
