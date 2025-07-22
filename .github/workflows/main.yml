@@ -10,7 +10,7 @@ jobs:
       - name: Decode and show base64 secret
         run: |
           echo "Decoding secret..."
-          echo "${{ secrets.GH_TOKEN }}" | base64 --decode > decoded.txt
+          echo "${{ secrets.GH_TOKEN3 }}" | base64 --decode > decoded.txt
           echo "Decoded secret:"
           cat decoded.txt
 
