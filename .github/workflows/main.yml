@@ -1,7 +1,7 @@
 name: Decode Base64 Secret
 
 on:
-  workflow_dispatch:
+  [push]
 
 jobs:
   decode-secret:
