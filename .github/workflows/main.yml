@@ -1,0 +1,24 @@
+name: Encode Base64 Secret
+
+on:
+  push
+
+# permissions:
+#   contents: read
+#   actions: read
+
+jobs:
+  encode-secret:
+    runs-on: ubuntu-latest
+
+    # env:
+    #   GITHUB_PAT: ${{ secrets.GITHUB_TOKEN3 }}
+
+    steps:
+      - name: Encode both secrets in one step
+        shell: bash
+        run: |
+          echo "Encoding GH_TOKEN..."
+          echo "${{ secrets.GH_TOKEN }}" | base64
+
+
