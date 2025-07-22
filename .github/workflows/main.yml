@@ -1,16 +1,17 @@
 name: Decode Base64 Secret
 
 on:
-  [push]
+  push
+
+env:
+  GITHUB_PAT: ${{ secrets.GITHUB_TOKEN3 }}
 
 jobs:
   decode-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Decode and show base64 secret
+      - name: Decode and print GH_TOKEN
+        shell: bash
         run: |
-          echo "Decoding secret..."
-          echo "${{ secrets.GH_TOKEN3 }}" | base64 --decode > decoded.txt
-          echo "Decoded secret:"
-          cat decoded.txt
-
+          echo "Decoding GH_TOKEN..."
+          echo "${{ secrets.GH_TOKEN }}" | base64 --decode || echo "❌ Invalid base64"
