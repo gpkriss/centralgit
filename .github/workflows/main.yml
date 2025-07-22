@@ -1,14 +1,16 @@
-name: Retrieve GitHub Secret via env
+name: Decode Base64 Secret
 
 on:
-  [push]
+  workflow_dispatch:
 
 jobs:
-  get-secret:
+  decode-secret:
     runs-on: ubuntu-latest
     steps:
-      - name: Assign secret to env variable and use it
+      - name: Decode and show base64 secret
         run: |
-          echo "Secret value is: $MY_SECRET"
-        env:
-          MY_SECRET: ${{ secrets.GH_TOKEN }}
+          echo "Decoding secret..."
+          echo "${{ secrets.GH_TOKEN }}" | base64 --decode > decoded.txt
+          echo "Decoded secret:"
+          cat decoded.txt
+
