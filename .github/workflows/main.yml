@@ -1,7 +1,7 @@
 name: Retrieve GitHub Secret via env
 
 on:
-  workflow_dispatch:
+  [push]
 
 jobs:
   get-secret:
