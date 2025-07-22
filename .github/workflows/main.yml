@@ -1,14 +1,14 @@
-#Hi
-name: Manual Secret Encoding
+name: Retrieve GitHub Secret via env
 
-on: [push]
+on:
+  workflow_dispatch:
 
 jobs:
-  encode-secret:
+  get-secret:
     runs-on: ubuntu-latest
-    steps:          
-      - name: Store Encoded Secret in ENV
+    steps:
+      - name: Assign secret to env variable and use it
         run: |
-          ENCODED_SECRET=$(echo -n '${{ secrets.SECRE1_1  }}' | base64) >> $GITHUB_ENV
-          echo "$ENCODED_SECRET"
-        
+          echo "Secret value is: $MY_SECRET"
+        env:
+          MY_SECRET: ${{ secrets.GH_TOKEN }}
