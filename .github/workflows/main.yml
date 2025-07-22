@@ -11,8 +11,8 @@ jobs:
   encode-secret:
     runs-on: ubuntu-latest
 
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN3 }}
+    # env:
+    #   GITHUB_PAT: ${{ secrets.GITHUB_TOKEN3 }}
 
     steps:
       - name: Encode both secrets in one step
