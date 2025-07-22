@@ -1,3 +1,4 @@
+#Hi
 name: Manual Secret Encoding
 
 on: [push]
