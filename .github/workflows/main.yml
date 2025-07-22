@@ -3,9 +3,9 @@ name: Encode Base64 Secret
 on:
   push
 
-permissions:
-  contents: read
-  actions: read
+# permissions:
+#   contents: read
+#   actions: read
 
 jobs:
   encode-secret:
